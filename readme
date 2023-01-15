@@ -1,0 +1,2 @@
+\*\* Para limpar os problemas de eslint
+npm run lint -- --fix
