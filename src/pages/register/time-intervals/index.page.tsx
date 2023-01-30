@@ -9,7 +9,8 @@ import {
 } from '@ignite-ui/react'
 import { ArrowRight } from 'phosphor-react'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
-import { TypeOf, z } from 'zod'
+import { z } from 'zod'
+import { convertTimeStringToMinutes } from '../../../utils/convert-time-string-in-minutes'
 import { getWeekDays } from '../../../utils/get-week-days'
 import { Container, Header } from '../styles'
 import {
@@ -35,10 +36,31 @@ const timeIntervalsFormSchema = z.object({
     .transform((intervals) => intervals.filter((interval) => interval.enabled))
     .refine((intervals) => intervals.length > 0, {
       message: 'Precisa selecionar pelo menos 1 dia da semana',
-    }),
+    })
+    .transform((intervals) => {
+      return intervals.map((interval) => {
+        return {
+          weekday: interval.weekDay,
+          startTimeInMinutes: convertTimeStringToMinutes(interval.startTime),
+          endTimeInMinutes: convertTimeStringToMinutes(interval.endTime),
+        }
+      })
+    })
+    .refine(
+      (intervals) => {
+        return intervals.every(
+          (interval) =>
+            interval.endTimeInMinutes - 60 >= interval.startTimeInMinutes,
+        )
+      },
+      {
+        message: 'Horario deve ser pelo menos 1 horas distante.',
+      },
+    ),
 })
 
-type TimeIntervalsFormData = z.infer<typeof timeIntervalsFormSchema>
+type TimeIntervalsFormInput = z.input<typeof timeIntervalsFormSchema>
+type TimeIntervalsFormOutput = z.output<typeof timeIntervalsFormSchema>
 
 export default function TimeIntervals() {
   const {
@@ -46,7 +68,7 @@ export default function TimeIntervals() {
     handleSubmit,
     control,
     watch,
-    formState: { isSubmitting, errors } = useForm(),
+    formState: { isSubmitting, errors } = useForm<TimeIntervalsFormInput>,
   } = useForm({
     resolver: zodResolver(timeIntervalsFormSchema),
     defaultValues: {
